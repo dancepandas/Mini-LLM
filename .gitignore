@@ -1,0 +1,87 @@
+# ===========================================================================
+# .gitignore
+# ---------------------------------------------------------------------------
+# 本项目的产物非常大（总计约 32GB），而那些**都不是代码**，不该进版本库：
+#
+#     checkpoints/   16 GB   9 个 .pt 权重文件，单个 1.9GB
+#     data/          15 GB   原始语料 11GB + 分词后的 .bin 3GB
+#
+# 两个原因：
+#   1. GitHub 单文件上限 100MB，1.9GB 的权重根本传不上去
+#   2. 这些产物都能由代码重新生成（虽然要花约 5 天算力）
+#
+# **要保留的**：tokenizer/tokenizer.json（2.6MB）——
+# 它是全部训练的前提，且一旦定下就不能变（改了要重新预训练），
+# 所以必须进版本库。
+# ===========================================================================
+
+# ⚠️ 路径必须用 `/` 锚定到**仓库根目录**！
+#
+#     `data/`  会匹配任意层级的 data 目录 —— 包括 `minilm/data/`，
+#              而那是数据管线的**源码**（download.py / clean.py / build_bin.py …），
+#              必须进版本库。用 `/data/` 才只匹配根目录下那个。
+#     `checkpoints/`、`logs/` 同理。
+#
+# 这个坑很隐蔽：`git add -A` 不会报错，只是那些文件悄无声息地没被加进来。
+
+# ---- 模型权重 ----
+/checkpoints/
+*.pt
+*.safetensors
+*.ckpt
+
+# ---- 数据（只排除根目录下的）----
+/data/
+*.bin
+*.jsonl
+*.parquet
+
+# ---- 训练日志 ----
+/logs/
+*.log
+# TensorBoard
+/tb/
+events.out.tfevents.*
+
+# ---- 冒烟测试的临时备份（1.8GB，可直接删除）----
+/_smoketest_backup/
+
+# ---- Claude Code 的会话产物 ----
+/.claude/
+
+# ---- 下载中间产物 ----
+*.part
+*.tmp
+*.assembling
+.*.parts/
+.hf_cache/
+.ms_cache/
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.python-version
+
+# ---- 编辑器 / 系统 ----
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Jupyter ----
+.ipynb_checkpoints/
+
+# ---- 本地环境变量（可能含代理地址、token 等）----
+.env
+.env.local

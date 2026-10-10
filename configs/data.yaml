@@ -1,0 +1,110 @@
+# ===========================================================================
+# 数据源配置
+# ---------------------------------------------------------------------------
+# 数据来源：魔塔社区 ModelScope（国内直连，不走代理）
+#
+# ## 为什么选 minimind_dataset
+#
+#     调研了开源项目 `jingyaogong/minimind`（中文、从零训练小模型、
+#     完整走 tokenizer→pretrain→SFT→RL），它的整套数据都在魔塔上：
+#
+#       gongjy/minimind_dataset  (16 文件, 25.6 GB)
+#         ├─ pretrain_t2t.jsonl        8.28 GB   预训练主力
+#         ├─ pretrain_t2t_mini.jsonl   1.24 GB   预训练小样
+#         ├─ sft_t2t_mini.jsonl        1.74 GB   SFT
+#         ├─ dpo.jsonl                 54 MB     RL(DPO)
+#         ├─ rlaif.jsonl               24 MB     RL(RLAIF)
+#         └─ agent_rl*.jsonl           100 MB    RL(agent)
+#
+#     实测该数据集：下载 27.9 万次、289 赞，是中文小模型训练的事实标准。
+#
+# ## 许可证
+#
+#     **CC-BY-NC-4.0（非商用）**。学习和研究用途没问题；
+#     若要商用必须换数据源。这一点在最终产物里要明确标注。
+#
+# ## 数据的已知局限（调研发现，直接照抄会继承）
+#
+#     minimind 的 pretrain 数据是**短问答/指令对拼接**的短文
+#     （平均约 215 字符/条），不是维基/书籍那种长文档。
+#     后果是模型「会聊天但知识面窄」。
+#     缓解方式：掺入 wikipedia 长文本语料（见下方 wikipedia 源）。
+#
+# ## 网络事实（实测）
+#
+#     - 魔塔单连接约 1.2~1.6 MB/s，且不稳定
+#     - 用 HTTP Range 分块 + 8 并发后聚合可达 5 MB/s（约 3 倍）
+#     - 必须显式绕过代理（urllib 会读 Windows 系统代理）
+# ===========================================================================
+
+# 全局参数
+target_tokens: 2000000000      # 训练集目标 token 数（2B）
+val_tokens: 2000000            # 验证集 token 数，从语料开头切出，不参与训练
+out_dir: data/pretrain
+raw_dir: data/raw
+
+download_workers: 8            # 并发下载线程数
+max_download_bytes_per_source: 12000000000   # 单源下载上限 12GB
+
+# ---------------------------------------------------------------------------
+# 预训练数据源
+# ---------------------------------------------------------------------------
+sources:
+  # minimind 预训练主力：8.28GB，约 1.6~1.9B tokens（用本项目的 32k 词表）
+  - name: minimind_pretrain
+    dir: minimind                          # 在 raw_dir 下的子目录
+    include_files:
+      - pretrain_t2t.jsonl
+      - pretrain_t2t_mini.jsonl
+    text_field: text                       # 格式: {"text": "..."}
+    target_tokens: 1800000000
+    license: CC-BY-NC-4.0（非商用）
+    note: "短问答拼接为主，需掺长文本补充知识面"
+
+  # 中文维基：补充长文档，缓解"知识面窄"的问题
+  - name: wikipedia
+    dir: wikipedia
+    include_files:
+      - wikipedia-cn-20230720-filtered.jsonl
+    text_field: completion                 # 注意字段名是 completion
+    target_tokens: 200000000
+    license: cc-by-sa-3.0
+    note: "2023-07-20 维基 dump，去噪版。提供长文本和事实知识"
+
+# ---------------------------------------------------------------------------
+# SFT 数据源（阶段 4）
+# ---------------------------------------------------------------------------
+sft:
+  # minimind 的 SFT 数据
+  minimind:
+    dir: minimind
+    include_files:
+      - sft_t2t_mini.jsonl
+    format: conversations        # {"conversations":[{"role","content"}]}
+    license: CC-BY-NC-4.0
+
+  # 备选：Qwen3-235B 蒸馏的中文数据（Apache 2.0，若需商用可用这个）
+  qwen3_distill:
+    repo_id: swift/Chinese-Qwen3-235B-Thinking-2507-Distill-data-110k-SFT
+    file_pattern: "*.jsonl"
+    size_bytes: 1727377847
+    format: conversations
+    license: Apache-2.0
+
+# ---------------------------------------------------------------------------
+# RL 数据源（阶段 5）
+# ---------------------------------------------------------------------------
+rl:
+  # minimind 现成的 RL 数据
+  dpo:
+    dir: minimind
+    include_files: [dpo.jsonl]
+    note: "DPO 偏好对数据"
+  rlaif:
+    dir: minimind
+    include_files: [rlaif.jsonl]
+    note: "RLAIF 数据"
+  agent_rl:
+    dir: minimind
+    include_files: [agent_rl.jsonl, agent_rl_math.jsonl]
+    note: "agent 场景的 RL 数据，含数学任务"

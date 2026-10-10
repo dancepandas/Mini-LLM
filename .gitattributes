@@ -1,0 +1,47 @@
+# ===========================================================================
+# .gitattributes —— 统一换行符与文件类型
+# ---------------------------------------------------------------------------
+# 本项目在 Windows 上开发，但代码会被 Linux/Mac 的用户拉取。
+# 不统一换行符的话，每次跨平台提交都会产生"整个文件都改了"的假 diff，
+# code review 完全没法看。
+#
+# 策略：文本文件一律以 LF 存进仓库（Linux 风格），
+# 二进制文件禁止 Git 做任何转换（否则会损坏）。
+# ===========================================================================
+
+# 默认：自动识别文本文件，仓库内统一用 LF
+* text=auto eol=lf
+
+# ---- 明确指定为文本 ----
+*.py     text eol=lf
+*.md     text eol=lf
+*.txt    text eol=lf
+*.yaml   text eol=lf
+*.yml    text eol=lf
+*.json   text eol=lf
+*.toml   text eol=lf
+*.cfg    text eol=lf
+*.sh     text eol=lf
+.gitignore    text eol=lf
+.gitattributes text eol=lf
+
+# ---- 明确指定为二进制（禁止转换）----
+*.pt          binary
+*.bin         binary
+*.safetensors binary
+*.parquet     binary
+*.gz          binary
+*.zip         binary
+*.png         binary
+*.jpg         binary
+
+# ---- 让 GitHub 语言统计更准确 ----
+# 把 .bin 之类的数据文件排除在语言统计之外
+*.bin         linguist-generated
+*.jsonl       linguist-generated
+
+# ---- diff 行为 ----
+# 文本文件用正常的文本 diff
+*.py     diff=python
+*.md     diff=markdown
+*.json   diff=json
